@@ -21,10 +21,8 @@ public:
 
 private:
     HRESULT CreateD2DBitmapFromFile(HWND hWnd);
-    HRESULT CreateD2DBitmapFromNETPBMFile(HWND hWnd);
     HRESULT CreateD2DBitmapFromJPEGXSFile(HWND hWnd);
     BOOL LocateImageFile(HWND hWnd, LPWSTR pszFileName, DWORD cbFileName);
-    BOOL LocateNETPBMFile(HWND hWnd, LPWSTR pszFileName, DWORD cbFileName);
     BOOL LocateJXSFile(HWND hWnd, LPWSTR pszFileName, DWORD cbFileName);
     HRESULT CreateDeviceResources(HWND hWnd);
 
