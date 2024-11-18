@@ -373,29 +373,33 @@ HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd)
             return ret;
         }
 
-        if (SUCCEEDED(hr))
-        {
-            if (!(image.ncomps == 3 || image.ncomps == 4))
-            {
-                MessageBox(hWnd, L"Viewing of other than 3 or 4 component images has yet to be implemented, come back later.", L"Application Capabilities", MB_ICONEXCLAMATION | MB_OK);
-                return E_NOTIMPL;
-            }
-            if (image.sx[0] != 1 || image.sx[1] != 1 || image.sx[2] != 1 ||
-                image.sy[0] != 1 || image.sy[1] != 1 || image.sy[2] != 1)
-            {
-                if (!((image.sx[1] == 2 && image.sx[2] == 2) && (image.sy[1] == 1 && image.sy[2] == 1)) &&
-                    !((image.sx[1] == 2 && image.sx[2] == 2) && (image.sy[1] == 2 && image.sy[2] == 2)))
-                {
-                    MessageBox(hWnd, L"This subsampling pattern has yet to be implemented in viewer, come back later.", L"Application Capabilities", MB_ICONEXCLAMATION | MB_OK);
-                    return E_NOTIMPL;
-                }
-            }
-        }
-
         //Step 3: Copy aligned image memory data to buffer (TODO: consider big endian case) and create render target
         if (SUCCEEDED(hr))
         {
-            m_pPxlData.resize(4 * image.width * image.height);
+            if (image.ncomps == 3 || image.ncomps == 4)
+            {
+                if (image.sx[0] != 1 || image.sx[1] != 1 || image.sx[2] != 1 ||
+                    image.sy[0] != 1 || image.sy[1] != 1 || image.sy[2] != 1)
+                {
+                    if (!((image.sx[1] == 2 && image.sx[2] == 2) && (image.sy[1] == 1 && image.sy[2] == 1)) &&
+                        !((image.sx[1] == 2 && image.sx[2] == 2) && (image.sy[1] == 2 && image.sy[2] == 2)))
+                    {
+                        MessageBox(hWnd, L"This subsampling pattern has yet to be implemented in viewer, come back later.", L"Application Capabilities", MB_ICONEXCLAMATION | MB_OK);
+                        return E_NOTIMPL;
+                    }
+                }
+                m_pPxlData.resize(4 * image.width * image.height);
+            }
+            else 
+                if (image.ncomps == 1)
+                {
+                    m_pPxlData.resize(4 * image.width * image.height);
+                }
+            else
+            {
+                MessageBox(hWnd, L"Viewing of other than 1, 3 or 4 component images has yet to be implemented, come back later.", L"Application Capabilities", MB_ICONEXCLAMATION | MB_OK);
+                return E_NOTIMPL;
+            }
             PlanarToPackaged(xs_config, image, m_pPxlData);
         }
 
@@ -460,7 +464,7 @@ HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd)
 
         SetCursor(LoadCursor(nullptr, IDC_ARROW));
     }
-
+    xs_free_image(&image);
     return hr;
 }
 
