@@ -464,6 +464,10 @@ HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd)
 
         SetCursor(LoadCursor(nullptr, IDC_ARROW));
     }
+    if (bitstream_buf)
+    {
+        free(bitstream_buf);
+    }
     xs_free_image(&image);
     return hr;
 }
