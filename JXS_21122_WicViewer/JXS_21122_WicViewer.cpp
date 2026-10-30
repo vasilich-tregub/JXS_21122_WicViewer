@@ -1,9 +1,9 @@
-// JXS_21122_WicViewer.cpp : Defines the entry point for the application.
-//
-
+﻿/* TERMS OF USE
+ * This source code is subject to the terms of the MIT License.
+ * Copyright(c) 2026 Vladimir Vasilich Tregub
+*/
 #include "framework.h"
 #include <wincodec.h>
-#include <commdlg.h>
 #include <d2d1.h>
 #include <d2d1helper.h>
 #include "JXS_21122_WicViewer.h"
@@ -20,8 +20,8 @@ extern "C" {
 #endif // DEBUG
 
 #include <shlwapi.h>
-#include <string>
 #pragma comment(lib, "shlwapi")
+#include <shobjidl.h>
 
 template <typename T>
 inline void SafeRelease(T*& p)
@@ -197,18 +197,22 @@ HRESULT DemoApp::CreateD2DBitmapFromFile(HWND hWnd)
 
     HRESULT hr = S_OK;
 
-    WCHAR szFileName[MAX_PATH];
-
     // Step 1: Create the open dialog box and locate the image file
-    if (LocateImageFile(hWnd, szFileName, ARRAYSIZE(szFileName)))
+    std::vector<std::wstring> paths;
+    if (LocateImageFile(paths))
     {
+        if (paths.size() == 0)
+        {
+            MessageBox(hWnd, L"No image files selected", L"Selecting images", MB_OK);
+            return S_OK;
+        }
         // Step 2: Decode the source image
 
         // Create a decoder
         IWICBitmapDecoder* pDecoder = NULL;
 
         hr = m_pIWICFactory->CreateDecoderFromFilename(
-            szFileName,                      // Image to be decoded
+            paths[0].data(),                      // Image to be decoded
             NULL,                            // Do not prefer a particular vendor
             GENERIC_READ,                    // Desired read access to the file
             WICDecodeMetadataCacheOnDemand,  // Cache metadata when needed
@@ -276,7 +280,7 @@ HRESULT DemoApp::CreateD2DBitmapFromFile(HWND hWnd)
             SafeRelease(m_pD2DBitmap);
             hr = m_pRT->CreateBitmapFromWicBitmap(m_pBitmapClipper, NULL, &m_pD2DBitmap);
             std::wstring title = L"Image File ";
-            title += std::wstring(szFileName);
+            title += paths[0].data();
             SetWindowTextW(hWnd, title.c_str());
         }
 
@@ -290,8 +294,6 @@ HRESULT DemoApp::CreateD2DBitmapFromFile(HWND hWnd)
 HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd)
 {
     HRESULT hr = S_OK;
-
-    WCHAR szFileName[MAX_PATH];
 
     xs_config_t xs_config{ 0 };
     char* input_seq_n = NULL;
@@ -309,12 +311,18 @@ HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd)
     IWICFormatConverter* convertedSourceBitmap = nullptr;
 
     // Step 1: Create the open dialog box and locate the image file
-    if (LocateJXSFile(hWnd, szFileName, ARRAYSIZE(szFileName)))
+    std::vector<std::wstring> paths;
+    if (LocateJXSFile(paths))
     {
+        if (paths.size() == 0)
+        {
+            MessageBox(hWnd, L"No image files selected", L"Selecting images", MB_OK);
+            return S_OK;
+        }
         SetCursor(LoadCursor(nullptr, IDC_WAIT));
 
         wchar_t shortPath[260];
-        long retlen = GetShortPathName(szFileName, shortPath, 260);
+        long retlen = GetShortPathName(paths[0].data(), shortPath, 260);
         char filename[260];
         size_t retSize = 0;
         errno_t err = wcstombs_s(&retSize, filename, 260, shortPath, 259);
@@ -359,7 +367,7 @@ HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd)
             return ret;
         }
 
-        if (!xs_dec_bitstream(ctx, bitstream_buf, bitstream_buf_max_size, &image))
+        if (!xs_dec_bitstream(ctx, 0, bitstream_buf, bitstream_buf_max_size, &image))
         {
             fprintf(stderr, "Error while decoding the codestream\n");
             ret = -1;
@@ -458,7 +466,7 @@ HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd)
             SafeRelease(m_pD2DBitmap);
             hr = m_pRT->CreateBitmapFromWicBitmap(m_pBitmapClipper, NULL, &m_pD2DBitmap);
             std::wstring title = L"JPEG XS File ";
-            title += std::wstring(szFileName);
+            title += std::wstring(paths[0].data());
             SetWindowTextW(hWnd, title.c_str());
         }
 
@@ -476,53 +484,152 @@ HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd)
 * Creates an open file dialog box and locate the image to decode. *
 ******************************************************************/
 
-BOOL DemoApp::LocateImageFile(HWND hWnd, LPWSTR pszFileName, DWORD cchFileName)
+BOOL DemoApp::LocateImageFile(std::vector<std::wstring>& paths)
 {
-    pszFileName[0] = L'\0';
+    IFileOpenDialog* p_file_open = nullptr;
+    bool are_all_operation_success = false;
+    while (!are_all_operation_success)
+    {
+        HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
+            IID_IFileOpenDialog, reinterpret_cast<void**>(&p_file_open));
+        if (FAILED(hr))
+            break;
 
-    OPENFILENAME ofn;
-    ZeroMemory(&ofn, sizeof(ofn));
+        FILEOPENDIALOGOPTIONS options = 0;
+        hr = p_file_open->GetOptions(&options);
+        if (FAILED(hr))
+            break;
 
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = hWnd;
-    ofn.lpstrFilter = L"All Image Files\0"              L"*.bmp;*.dib;*.wdp;*.mdp;*.hdp;*.gif;*.png;*.jpg;*.jpeg;*.tif;*.ico\0"
-        L"Windows Bitmap\0"               L"*.bmp;*.dib\0"
-        L"High Definition Photo\0"        L"*.wdp;*.mdp;*.hdp\0"
-        L"Graphics Interchange Format\0"  L"*.gif\0"
-        L"Portable Network Graphics\0"    L"*.png\0"
-        L"JPEG File Interchange Format\0" L"*.jpg;*.jpeg\0"
-        L"Tiff File\0"                    L"*.tif\0"
-        L"Icon\0"                         L"*.ico\0"
-        L"All Files\0"                    L"*.*\0"
-        L"\0";
-    ofn.lpstrFile = pszFileName;
-    ofn.nMaxFile = cchFileName;
-    ofn.lpstrTitle = L"Open Image";
-    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+        //options |= FOS_PICKFOLDERS;
+        options |= FOS_ALLOWMULTISELECT;
 
-    // Display the Open dialog box. 
-    return GetOpenFileName(&ofn);
+        hr = p_file_open->SetOptions(options);
+        if (FAILED(hr))
+            break;
+
+        COMDLG_FILTERSPEC filters[2];
+        filters[0].pszName = L"All Image files.";
+        filters[0].pszSpec = L"*.bmp;*.dib;*.wdp;*.mdp;*.hdp;*.gif;*.png;*.jpg;*.jpeg;*.tif;*.ico";
+        filters[1].pszName = L"All Files.";
+        filters[1].pszSpec = L"*.*";
+
+        p_file_open->SetFileTypes(2, filters);
+        hr = p_file_open->Show(NULL);
+        if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) // No items were selected.
+        {
+            are_all_operation_success = true;
+            break;
+        }
+        else if (FAILED(hr))
+            break;
+
+        IShellItemArray* p_items;
+        hr = p_file_open->GetResults(&p_items);
+        if (FAILED(hr))
+            break;
+        DWORD total_items = 0;
+        hr = p_items->GetCount(&total_items);
+        if (FAILED(hr))
+            break;
+
+        for (int i = 0; i < static_cast<int>(total_items); ++i)
+        {
+            IShellItem* p_item;
+            p_items->GetItemAt(i, &p_item);
+            if (SUCCEEDED(hr))
+            {
+                PWSTR path;
+                hr = p_item->GetDisplayName(SIGDN_FILESYSPATH, &path);
+                if (SUCCEEDED(hr))
+                {
+                    paths.push_back(path);
+                    CoTaskMemFree(path);
+                }
+                p_item->Release();
+            }
+        }
+
+        p_items->Release();
+        are_all_operation_success = true;
+    }
+
+    if (p_file_open)
+        p_file_open->Release();
+    return are_all_operation_success;
 }
 
-BOOL DemoApp::LocateJXSFile(HWND hWnd, LPWSTR pszFileName, DWORD cchFileName)
+BOOL DemoApp::LocateJXSFile(std::vector<std::wstring>& paths)
 {
-    pszFileName[0] = L'\0';
+    IFileOpenDialog* p_file_open = nullptr;
+    bool are_all_operation_success = false;
+    while (!are_all_operation_success)
+    {
+        HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
+            IID_IFileOpenDialog, reinterpret_cast<void**>(&p_file_open));
+        if (FAILED(hr))
+            break;
 
-    OPENFILENAME ofn;
-    ZeroMemory(&ofn, sizeof(ofn));
+        FILEOPENDIALOGOPTIONS options = 0;
+        hr = p_file_open->GetOptions(&options);
+        if (FAILED(hr))
+            break;
 
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = hWnd;
-    ofn.lpstrFilter = L"All JPEG XS Files\0"              L"*.jxs;*.jxc\0"
-        L"All Files\0"                    L"*.*\0"
-        L"\0";
-    ofn.lpstrFile = pszFileName;
-    ofn.nMaxFile = cchFileName;
-    ofn.lpstrTitle = L"Open JPEG XS Image";
-    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+        //options |= FOS_PICKFOLDERS;
+        options |= FOS_ALLOWMULTISELECT;
 
-    // Display the Open dialog box. 
-    return GetOpenFileName(&ofn);
+        hr = p_file_open->SetOptions(options);
+        if (FAILED(hr))
+            break;
+
+        COMDLG_FILTERSPEC filters[2];
+        filters[0].pszName = L"All JPEG XS Files.";
+        filters[0].pszSpec = L"*.jxs;*.jxc";
+        filters[1].pszName = L"All Files.";
+        filters[1].pszSpec = L"*.*";
+
+        p_file_open->SetFileTypes(2, filters);
+        hr = p_file_open->Show(NULL);
+        if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) // No items were selected.
+        {
+            are_all_operation_success = true;
+            break;
+        }
+        else if (FAILED(hr))
+            break;
+
+        IShellItemArray* p_items;
+        hr = p_file_open->GetResults(&p_items);
+        if (FAILED(hr))
+            break;
+        DWORD total_items = 0;
+        hr = p_items->GetCount(&total_items);
+        if (FAILED(hr))
+            break;
+
+        for (int i = 0; i < static_cast<int>(total_items); ++i)
+        {
+            IShellItem* p_item;
+            p_items->GetItemAt(i, &p_item);
+            if (SUCCEEDED(hr))
+            {
+                PWSTR path;
+                hr = p_item->GetDisplayName(SIGDN_FILESYSPATH, &path);
+                if (SUCCEEDED(hr))
+                {
+                    paths.push_back(path);
+                    CoTaskMemFree(path);
+                }
+                p_item->Release();
+            }
+        }
+
+        p_items->Release();
+        are_all_operation_success = true;
+    }
+
+    if (p_file_open)
+        p_file_open->Release();
+    return are_all_operation_success;
 }
 
 

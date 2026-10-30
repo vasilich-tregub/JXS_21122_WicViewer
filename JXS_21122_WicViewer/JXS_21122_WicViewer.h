@@ -1,6 +1,11 @@
+﻿/* TERMS OF USE
+ * This source code is subject to the terms of the MIT License.
+ * Copyright(c) 2026 Vladimir Vasilich Tregub
+*/
 #pragma once
 
-#include "resource.h"
+#include "Resource.h"
+#include <string>
 #include <vector>
 
 const FLOAT DEFAULT_DPI = 96.f;   // Default DPI that maps image resolution directly to screen resoltuion
@@ -22,8 +27,8 @@ public:
 private:
     HRESULT CreateD2DBitmapFromFile(HWND hWnd);
     HRESULT CreateD2DBitmapFromJPEGXSFile(HWND hWnd);
-    BOOL LocateImageFile(HWND hWnd, LPWSTR pszFileName, DWORD cbFileName);
-    BOOL LocateJXSFile(HWND hWnd, LPWSTR pszFileName, DWORD cbFileName);
+    BOOL LocateImageFile(std::vector<std::wstring>& paths);
+    BOOL LocateJXSFile(std::vector<std::wstring>& paths);
     HRESULT CreateDeviceResources(HWND hWnd);
 
     LRESULT WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
