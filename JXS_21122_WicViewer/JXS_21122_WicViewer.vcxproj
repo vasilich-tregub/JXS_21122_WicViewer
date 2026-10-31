@@ -142,6 +142,7 @@
   <ItemGroup>
     <ClCompile Include="file_io.c" />
     <ClCompile Include="JXS_21122_WicViewer.cpp" />
+    <ClCompile Include="JXS_21122_WicViewer_jxs.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="JXS_21122_WicViewer.rc" />
