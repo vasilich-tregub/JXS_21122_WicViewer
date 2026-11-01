@@ -19,12 +19,12 @@ to create a bitstream buffer. The public methods of jxs.lib library
 **bitstream\_buf** into a planar color raster image structure of **image\_xs\_t** type
 (see the libjxs.h header file).
 
-To decode a sequence of files with TDC markers, you select all files of 
-your sequence in the dialog 'File/JPEG XS Files' that opens via the app 
-main menu. The sequence files must be named as shown in 
-ISO_IEC_21122-5_ED-3's README example of encoding/decoding JXS sequences.
+To decode a sequence of files with TDC markers, you select sequential files of 
+your sequence in the dialog 'File/JPEG XS Files' that you open via the app main menu. 
 The sample sequence can be found in my repo 
 https://github.com/vasilich-tregub/JXS_21122_LAB/tree/master/JXS_TDC 
-or extracted from the the original archive 
+or extracted from the original archive 
 https://standards.iso.org/iso-iec/21122/-4/ed-3/en/tests.zip .
 
+For now, only the last frame of a sequence is displayed. 
+TODO: Save all frames read from the sequence and let the user iterate through these.

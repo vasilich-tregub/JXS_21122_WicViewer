@@ -2,6 +2,10 @@
  * This source code is subject to the terms of the MIT License.
  * Copyright(c) 2026 Vladimir Vasilich Tregub
 */
+/* Code for function DecodeJPEGXSSequence is borrowed from 
+ * ISO_IEC_21122-5_ED-3, compilation unit xs_dec_main.c, 
+ * copyrigtht holders intoPIX SA, Fraunhofer IIS and Canon Inc.
+*/
 #include "framework.h"
 #include <wincodec.h>
 #include <d2d1.h>
@@ -47,23 +51,25 @@ HRESULT DemoApp::DecodeJPEGXSSequence(HWND hWnd)
     char* output_seq_n = NULL;
     char* input_fn = NULL;
     char* output_fn = NULL;
+    std::vector<xs_image_t> jxsimages;
     xs_image_t image = { 0 };
     uint8_t* bitstream_buf = NULL;
     size_t bitstream_buf_size, bitstream_buf_max_size;
     xs_dec_context_t* ctx = NULL;
     int ret = 0;
     int file_idx = 0;
-
+    
     // Step 1: Create the open dialog box and locate the image file
     std::vector<std::wstring> paths;
     if (LocateJXSFile(paths))
     {
+        SetCursor(LoadCursor(nullptr, IDC_WAIT));
+    
         if (paths.size() == 0)
         {
             MessageBox(hWnd, L"No image files selected", L"Selecting images", MB_OK);
             return S_OK;
         }
-        SetCursor(LoadCursor(nullptr, IDC_WAIT));
 
         wchar_t shortPath[260];
         long retlen = GetShortPathName(paths[0].data(), shortPath, 260);
@@ -125,71 +131,97 @@ HRESULT DemoApp::DecodeJPEGXSSequence(HWND hWnd)
             return ret;
         }
 
-        //Step 3: Copy aligned image memory data to buffer (TODO: consider big endian case) and create render target
-        if (SUCCEEDED(hr))
+        jxsimages.push_back(image);
+
+        for (int ix = 1; ix < paths.size(); ++ix)
         {
-            if (image.ncomps == 3 || image.ncomps == 4)
+            long retlen = GetShortPathName(paths[ix].data(), shortPath, 260);
+            errno_t err = wcstombs_s(&retSize, filename, 260, shortPath, 259);
+            fileio_read(input_fn, bitstream_buf, &bitstream_buf_size, bitstream_buf_max_size);
+
+            if (!xs_dec_bitstream(ctx, 0, bitstream_buf, bitstream_buf_max_size, &image))
             {
-                if (image.sx[0] != 1 || image.sx[1] != 1 || image.sx[2] != 1 ||
-                    image.sy[0] != 1 || image.sy[1] != 1 || image.sy[2] != 1)
-                {
-                    if (!((image.sx[1] == 2 && image.sx[2] == 2) && (image.sy[1] == 1 && image.sy[2] == 1)) &&
-                        !((image.sx[1] == 2 && image.sx[2] == 2) && (image.sy[1] == 2 && image.sy[2] == 2)))
-                    {
-                        MessageBox(hWnd, L"This subsampling pattern has yet to be implemented in viewer, come back later.", L"Application Capabilities", MB_ICONEXCLAMATION | MB_OK);
-                        return E_NOTIMPL;
-                    }
-                }
-                m_pPxlData = (uint8_t*)malloc(4 * image.width * image.height);// .resize(4 * image.width * image.height);
+                fprintf(stderr, "Error while decoding the codestream\n");
+                ret = -1;
+                return ret;
             }
-            else
-                if (image.ncomps == 1)
-                {
-                    m_pPxlData = (uint8_t*)malloc(4 * image.width * image.height);//.resize(4 * image.width * image.height);
-                }
-                else
-                {
-                    MessageBox(hWnd, L"Viewing of other than 1, 3 or 4 component images has yet to be implemented, come back later.", L"Application Capabilities", MB_ICONEXCLAMATION | MB_OK);
-                    return E_NOTIMPL;
-                }
-            PlanarToPackaged(xs_config, image, m_pPxlData);
+
+            if (!xs_dec_postprocess_image(&xs_config, &image))
+            {
+                fprintf(stderr, "Error postprocessing the image\n");
+                ret = -1;
+                return ret;
+            }
+
+            jxsimages.push_back(image);
         }
-        CreateD2DBitmapFromJPEGXSFile(hWnd, &image);
+
+        if (input_fn)
+        {
+            //free(input_fn);
+        }
+        if (output_fn)
+        {
+            free(output_fn);
+        }
+        CreateD2DBitmapFromJPEGXSFile(hWnd, &xs_config, &jxsimages[0]);
+        xs_free_image(&image);
+        if (ctx)
+        {
+            xs_dec_close(ctx);
+        }
+        if (bitstream_buf)
+        {
+            free(bitstream_buf);
+        }
+        
         SetCursor(LoadCursor(nullptr, IDC_ARROW));
-    }
-    if (m_pPxlData)
-    {
-        free(m_pPxlData);
-    }
-    if (input_fn)
-    {
-        //free(input_fn);
-    }
-    if (output_fn)
-    {
-        free(output_fn);
-    }
-    xs_free_image(&image);
-    if (ctx)
-    {
-        xs_dec_close(ctx);
-    }
-    if (bitstream_buf)
-    {
-        free(bitstream_buf);
     }
     return hr;
 }
-HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd, xs_image_t* image)
+HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd, xs_config_t* xs_config, xs_image_t* image)
 {
     HRESULT hr = S_OK;
     IWICBitmap* jxsBitmap = nullptr;
     IWICFormatConverter* convertedSourceBitmap = nullptr;
+    //Step 3: Copy aligned image memory data to buffer (TODO: consider big endian case) and create render target
+    if (SUCCEEDED(hr))
+    {
+        if (image->ncomps == 3 || image->ncomps == 4)
+        {
+            if (image->sx[0] != 1 || image->sx[1] != 1 || image->sx[2] != 1 ||
+                image->sy[0] != 1 || image->sy[1] != 1 || image->sy[2] != 1)
+            {
+                if (!((image->sx[1] == 2 && image->sx[2] == 2) && (image->sy[1] == 1 && image->sy[2] == 1)) &&
+                    !((image->sx[1] == 2 && image->sx[2] == 2) && (image->sy[1] == 2 && image->sy[2] == 2)))
+                {
+                    MessageBox(hWnd, L"This subsampling pattern has yet to be implemented in viewer, come back later.", L"Application Capabilities", MB_ICONEXCLAMATION | MB_OK);
+                    return E_NOTIMPL;
+                }
+            }
+            m_pPxlData = (uint8_t*)malloc(4 * image->width * image->height);// .resize(4 * image->width * image->height);
+        }
+        else
+        {
+            if (image->ncomps == 1)
+            {
+                m_pPxlData = (uint8_t*)malloc(4 * image->width * image->height);//.resize(4 * image->width * image->height);
+            }
+            else
+            {
+                MessageBox(hWnd, L"Viewing of other than 1, 3 or 4 component images has yet to be implemented, come back later.", L"Application Capabilities", MB_ICONEXCLAMATION | MB_OK);
+                return E_NOTIMPL;
+            }
+        }
+        PlanarToPackaged(*xs_config, *image, m_pPxlData);
+
+    }
+
     if (SUCCEEDED(hr))
     {
         hr = m_pIWICFactory->CreateBitmapFromMemory(image->width, image->height,
             GUID_WICPixelFormat32bppPRGBA, 4 * image->width,
-            (unsigned int) (4 * image->width * image->height), m_pPxlData,
+            (unsigned int)(4 * image->width * image->height), m_pPxlData,
             &jxsBitmap);
     }
 
@@ -241,6 +273,10 @@ HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd, xs_image_t* image)
         //SetWindowTextW(hWnd, title.c_str());
     }
 
+    if (m_pPxlData)
+    {
+        free(m_pPxlData);
+    }
     SafeRelease(m_pBitmapClipper);
     SafeRelease(convertedSourceBitmap);
     SafeRelease(jxsBitmap);

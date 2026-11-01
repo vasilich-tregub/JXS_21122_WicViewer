@@ -29,7 +29,7 @@ private:
     HRESULT CreateD2DBitmapFromFile(HWND hWnd);
     BOOL LocateImageFile(std::vector<std::wstring>& paths);
     HRESULT DecodeJPEGXSSequence(HWND hWnd);
-    HRESULT CreateD2DBitmapFromJPEGXSFile(HWND hWnd, xs_image_t* image);
+    HRESULT CreateD2DBitmapFromJPEGXSFile(HWND hWnd, xs_config_t* xs_config, xs_image_t* image);
     BOOL LocateJXSFile(std::vector<std::wstring>& paths);
     HRESULT CreateDeviceResources(HWND hWnd);
 
