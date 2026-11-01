@@ -7,6 +7,7 @@
 #include "Resource.h"
 #include <string>
 #include <vector>
+#include "libjxs.h"
 
 const FLOAT DEFAULT_DPI = 96.f;   // Default DPI that maps image resolution directly to screen resoltuion
 
@@ -26,8 +27,9 @@ public:
 
 private:
     HRESULT CreateD2DBitmapFromFile(HWND hWnd);
-    HRESULT CreateD2DBitmapFromJPEGXSFile(HWND hWnd);
     BOOL LocateImageFile(std::vector<std::wstring>& paths);
+    HRESULT DecodeJPEGXSSequence(HWND hWnd);
+    HRESULT CreateD2DBitmapFromJPEGXSFile(HWND hWnd, xs_image_t* image);
     BOOL LocateJXSFile(std::vector<std::wstring>& paths);
     HRESULT CreateDeviceResources(HWND hWnd);
 
@@ -44,7 +46,7 @@ private:
     ID2D1Factory* m_pD2DFactory;
     ID2D1HwndRenderTarget* m_pRT;
     ID2D1Bitmap* m_pD2DBitmap;
-    std::vector<uint8_t> m_pPxlData;
+    uint8_t* m_pPxlData;
     IWICBitmapClipper* m_pBitmapClipper;
     float m_zoom = 1.0f;
     uint32_t m_width = 0;

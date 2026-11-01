@@ -12,7 +12,7 @@ uint8_t clamp(double arg)
         return 255;
     return (uint8_t)arg;
 }
-void PlanarToPackaged(xs_config_t& xs_config, xs_image_t& image, std::vector<uint8_t>& pxldata)
+void PlanarToPackaged(xs_config_t& xs_config, xs_image_t& image, uint8_t* pxldata)
 {
     int rightshift = (image.depth > 8) ? (image.depth - 8) : 0;
     if (image.ncomps == 3 || image.ncomps == 4)

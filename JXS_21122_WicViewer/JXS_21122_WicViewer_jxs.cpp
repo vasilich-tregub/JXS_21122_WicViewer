@@ -8,7 +8,6 @@
 #include <d2d1helper.h>
 #include "JXS_21122_WicViewer.h"
 
-#include "libjxs.h"
 #include "PlanarToPackaged.h"
 extern "C" {
 #include "file_io.h"
@@ -39,7 +38,7 @@ uint16_t byteswap(uint16_t val)
     uint8_t lo = (val & 0xff);
     return val;// (lo << 8 | hi);
 }
-HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd)
+HRESULT DemoApp::DecodeJPEGXSSequence(HWND hWnd)
 {
     HRESULT hr = S_OK;
 
@@ -54,9 +53,6 @@ HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd)
     xs_dec_context_t* ctx = NULL;
     int ret = 0;
     int file_idx = 0;
-
-    IWICBitmap* jxsBitmap = nullptr;
-    IWICFormatConverter* convertedSourceBitmap = nullptr;
 
     // Step 1: Create the open dialog box and locate the image file
     std::vector<std::wstring> paths;
@@ -144,12 +140,12 @@ HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd)
                         return E_NOTIMPL;
                     }
                 }
-                m_pPxlData.resize(4 * image.width * image.height);
+                m_pPxlData = (uint8_t*)malloc(4 * image.width * image.height);// .resize(4 * image.width * image.height);
             }
             else
                 if (image.ncomps == 1)
                 {
-                    m_pPxlData.resize(4 * image.width * image.height);
+                    m_pPxlData = (uint8_t*)malloc(4 * image.width * image.height);//.resize(4 * image.width * image.height);
                 }
                 else
                 {
@@ -158,76 +154,99 @@ HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd)
                 }
             PlanarToPackaged(xs_config, image, m_pPxlData);
         }
-
-        if (SUCCEEDED(hr))
-        {
-            SafeRelease(jxsBitmap);
-            hr = m_pIWICFactory->CreateBitmapFromMemory(image.width, image.height,
-                GUID_WICPixelFormat32bppPRGBA, 4 * image.width,
-                (unsigned int)m_pPxlData.size(), m_pPxlData.data(),
-                &jxsBitmap);
-        }
-
-        m_width = (image.width > 8192) ? 8192 : image.width;
-        m_height = (image.height > 8192) ? 8192 : image.height;
-
-        if (SUCCEEDED(hr))
-        {
-            SafeRelease(convertedSourceBitmap);
-            hr = m_pIWICFactory->CreateFormatConverter(&convertedSourceBitmap);
-        }
-
-        if (SUCCEEDED(hr))
-        {
-            hr = convertedSourceBitmap->Initialize(
-                jxsBitmap,                          // Input bitmap to convert
-                GUID_WICPixelFormat32bppPBGRA,   // Destination pixel format
-                WICBitmapDitherTypeNone,         // Specified dither pattern
-                NULL,                            // Specify a particular palette 
-                0.f,                             // Alpha threshold
-                WICBitmapPaletteTypeCustom       // Palette translation type
-            );
-        }
-
-        // if no clipping required, this adds an unnecessary overhead, will see to it later
-        if (SUCCEEDED(hr))
-        {
-            SafeRelease(m_pBitmapClipper);
-            hr = m_pIWICFactory->CreateBitmapClipper(&m_pBitmapClipper);
-        }
-
-        WICRect cliprect = { 0, 0, (int)m_width, (int)m_height };
-        if (SUCCEEDED(hr))
-        {
-            m_pBitmapClipper->Initialize(convertedSourceBitmap, &cliprect);
-        }
-
-        //Step 4: Create render target and D2D bitmap from IWICBitmap
-        if (SUCCEEDED(hr))
-        {
-            hr = CreateDeviceResources(hWnd);
-        }
-
-        if (SUCCEEDED(hr))
-        {
-            // Need to release the previous D2DBitmap if there is one
-            SafeRelease(m_pD2DBitmap);
-            hr = m_pRT->CreateBitmapFromWicBitmap(m_pBitmapClipper, NULL, &m_pD2DBitmap);
-            std::wstring title = L"JPEG XS File ";
-            title += std::wstring(paths[0].data());
-            SetWindowTextW(hWnd, title.c_str());
-        }
-
+        CreateD2DBitmapFromJPEGXSFile(hWnd, &image);
         SetCursor(LoadCursor(nullptr, IDC_ARROW));
+    }
+    if (m_pPxlData)
+    {
+        free(m_pPxlData);
+    }
+    if (input_fn)
+    {
+        //free(input_fn);
+    }
+    if (output_fn)
+    {
+        free(output_fn);
+    }
+    xs_free_image(&image);
+    if (ctx)
+    {
+        xs_dec_close(ctx);
     }
     if (bitstream_buf)
     {
         free(bitstream_buf);
     }
-    xs_free_image(&image);
     return hr;
 }
+HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd, xs_image_t* image)
+{
+    HRESULT hr = S_OK;
+    IWICBitmap* jxsBitmap = nullptr;
+    IWICFormatConverter* convertedSourceBitmap = nullptr;
+    if (SUCCEEDED(hr))
+    {
+        hr = m_pIWICFactory->CreateBitmapFromMemory(image->width, image->height,
+            GUID_WICPixelFormat32bppPRGBA, 4 * image->width,
+            (unsigned int) (4 * image->width * image->height), m_pPxlData,
+            &jxsBitmap);
+    }
 
+    m_width = (image->width > 8192) ? 8192 : image->width;
+    m_height = (image->height > 8192) ? 8192 : image->height;
+
+    if (SUCCEEDED(hr))
+    {
+        hr = m_pIWICFactory->CreateFormatConverter(&convertedSourceBitmap);
+    }
+
+    if (SUCCEEDED(hr))
+    {
+        hr = convertedSourceBitmap->Initialize(
+            jxsBitmap,                          // Input bitmap to convert
+            GUID_WICPixelFormat32bppPBGRA,   // Destination pixel format
+            WICBitmapDitherTypeNone,         // Specified dither pattern
+            NULL,                            // Specify a particular palette 
+            0.f,                             // Alpha threshold
+            WICBitmapPaletteTypeCustom       // Palette translation type
+        );
+    }
+
+    // if no clipping required, this adds an unnecessary overhead, will see to it later
+    if (SUCCEEDED(hr))
+    {
+        hr = m_pIWICFactory->CreateBitmapClipper(&m_pBitmapClipper);
+    }
+
+    WICRect cliprect = { 0, 0, (int)m_width, (int)m_height };
+    if (SUCCEEDED(hr))
+    {
+        m_pBitmapClipper->Initialize(convertedSourceBitmap, &cliprect);
+    }
+
+    //Step 4: Create render target and D2D bitmap from IWICBitmap
+    if (SUCCEEDED(hr))
+    {
+        hr = CreateDeviceResources(hWnd);
+    }
+
+    if (SUCCEEDED(hr))
+    {
+        // Need to release the previous D2DBitmap if there is one
+        SafeRelease(m_pD2DBitmap);
+        hr = m_pRT->CreateBitmapFromWicBitmap(m_pBitmapClipper, NULL, &m_pD2DBitmap);
+        std::wstring title = L"JPEG XS File ";
+        //title += std::wstring(paths[0].data());
+        //SetWindowTextW(hWnd, title.c_str());
+    }
+
+    SafeRelease(m_pBitmapClipper);
+    SafeRelease(convertedSourceBitmap);
+    SafeRelease(jxsBitmap);
+
+    return hr;
+}
 BOOL DemoApp::LocateJXSFile(std::vector<std::wstring>& paths)
 {
     IFileOpenDialog* p_file_open = nullptr;

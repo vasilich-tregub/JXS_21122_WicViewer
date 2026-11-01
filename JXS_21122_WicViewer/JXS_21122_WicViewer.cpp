@@ -456,7 +456,7 @@ LRESULT DemoApp::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         case ID_FILE_JPEGXSFILES:
         {
-            if (SUCCEEDED(CreateD2DBitmapFromJPEGXSFile(hWnd)))
+            if (SUCCEEDED(DecodeJPEGXSSequence(hWnd)))
             {
                 InvalidateRect(hWnd, NULL, TRUE);
             }
