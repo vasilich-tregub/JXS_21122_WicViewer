@@ -51,4 +51,7 @@ private:
     float m_zoom = 1.0f;
     uint32_t m_width = 0;
     uint32_t m_height = 0;
+    xs_config_t m_xsConfig = { 0 };
+    std::vector<xs_image_t> m_jxsimages;
+    int m_xsImageIx = 0;
 };

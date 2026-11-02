@@ -7,6 +7,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JXS_21122_WicViewer", "JXS_
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{401832A7-94FE-45D9-8AEA-89ECB1A72995}"
 	ProjectSection(SolutionItems) = preProject
+		308.zip = 308.zip
 		LICENSE.md = LICENSE.md
 		README.md = README.md
 	EndProjectSection

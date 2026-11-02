@@ -484,6 +484,22 @@ LRESULT DemoApp::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             InvalidateRect(hWnd, NULL, TRUE);
             break;
         }
+        case ID_VIEW_NEXTINSEQUENCE:
+        {
+            if (m_xsImageIx < m_jxsimages.size() - 1)
+                m_xsImageIx++;
+            CreateD2DBitmapFromJPEGXSFile(hWnd, &m_xsConfig, &m_jxsimages[m_xsImageIx]);
+            InvalidateRect(hWnd, NULL, TRUE);
+            break;
+        }
+        case ID_VIEW_PREVINSEQUENCE:
+        {
+            if (m_xsImageIx > 0)
+                m_xsImageIx--;
+            CreateD2DBitmapFromJPEGXSFile(hWnd, &m_xsConfig, &m_jxsimages[m_xsImageIx]);
+            InvalidateRect(hWnd, NULL, TRUE);
+            break;
+        }
         case IDM_EXIT:
         {
             PostMessage(hWnd, WM_CLOSE, 0, 0);

@@ -20,11 +20,11 @@ to create a bitstream buffer. The public methods of jxs.lib library
 (see the libjxs.h header file).
 
 To decode a sequence of files with TDC markers, you select sequential files of 
-your sequence in the dialog 'File/JPEG XS Files' that you open via the app main menu. 
-The sample sequence can be found in my repo 
-https://github.com/vasilich-tregub/JXS_21122_LAB/tree/master/JXS_TDC 
-or extracted from the original archive 
+your sequence in the dialog 'File/Open JPEG XS Sequence' that you open via 
+the app main menu. The 65-frame sample sequence is in 308.zip of this repo, 
+other sequencies can be extracted from the original archive 
 https://standards.iso.org/iso-iec/21122/-4/ed-3/en/tests.zip .
 
-For now, only the last frame of a sequence is displayed. 
-TODO: Save all frames read from the sequence and let the user iterate through these.
+Once you open View JXS sequence in JXS_21122_WicViewer, you can walk through 
+individual frames with Page Up/Page Down. Interesting insight gives viewing 
+a sequence with omitted a starting frame like frame_00000000.jxs in sequence 308.

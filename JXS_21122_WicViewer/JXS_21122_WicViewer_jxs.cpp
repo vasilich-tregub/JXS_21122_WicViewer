@@ -42,16 +42,39 @@ uint16_t byteswap(uint16_t val)
     uint8_t lo = (val & 0xff);
     return val;// (lo << 8 | hi);
 }
+
+xs_image_t copy_xs_image(xs_image_t* xs_image)
+{
+    xs_image_t ret_image;
+    ret_image.width = xs_image->width;
+    ret_image.height = xs_image->height;
+    ret_image.depth = xs_image->depth;
+    ret_image.ncomps = xs_image->ncomps;
+    std::copy(std::begin(xs_image->sx), std::end(xs_image->sx), std::begin(ret_image.sx));
+    std::copy(std::begin(xs_image->sy), std::end(xs_image->sy), std::begin(ret_image.sy));
+    for (int i = 0; i < xs_image->ncomps; ++i)
+    {
+        const size_t sample_count = (size_t)(xs_image->width / xs_image->sx[i]) * (size_t)(xs_image->height / xs_image->sy[i]);
+        ret_image.comps_array[i] = (xs_data_in_t*)malloc(sample_count * sizeof(xs_data_in_t));
+        memcpy_s(ret_image.comps_array[i], sizeof(xs_data_in_t) * sample_count, xs_image->comps_array[i], sizeof(xs_data_in_t) * sample_count);
+    }
+    return ret_image;
+}
+
 HRESULT DemoApp::DecodeJPEGXSSequence(HWND hWnd)
 {
     HRESULT hr = S_OK;
 
-    xs_config_t xs_config{ 0 };
+    for (auto xs_image : m_jxsimages)
+    {
+        xs_free_image(&xs_image);
+    }
+    m_jxsimages.clear();
+    m_jxsimages.shrink_to_fit();
     char* input_seq_n = NULL;
     char* output_seq_n = NULL;
     char* input_fn = NULL;
     char* output_fn = NULL;
-    std::vector<xs_image_t> jxsimages;
     xs_image_t image = { 0 };
     uint8_t* bitstream_buf = NULL;
     size_t bitstream_buf_size, bitstream_buf_max_size;
@@ -95,7 +118,7 @@ HRESULT DemoApp::DecodeJPEGXSSequence(HWND hWnd)
         }
         fileio_read(input_fn, bitstream_buf, &bitstream_buf_size, bitstream_buf_max_size);
 
-        if (!xs_dec_probe(bitstream_buf, bitstream_buf_size, &xs_config, &image))
+        if (!xs_dec_probe(bitstream_buf, bitstream_buf_size, &m_xsConfig, &image))
         {
             fprintf(stderr, "Unable to parse input codestream (%s)\n", input_fn);
             ret = -1;
@@ -109,7 +132,7 @@ HRESULT DemoApp::DecodeJPEGXSSequence(HWND hWnd)
             return ret;
         }
 
-        ctx = xs_dec_init(&xs_config, &image);
+        ctx = xs_dec_init(&m_xsConfig, &image);
         if (!ctx)
         {
             fprintf(stderr, "Error parsing the codestream\n");
@@ -124,14 +147,14 @@ HRESULT DemoApp::DecodeJPEGXSSequence(HWND hWnd)
             return ret;
         }
 
-        if (!xs_dec_postprocess_image(&xs_config, &image))
+        if (!xs_dec_postprocess_image(&m_xsConfig, &image))
         {
             fprintf(stderr, "Error postprocessing the image\n");
             ret = -1;
             return ret;
         }
 
-        jxsimages.push_back(image);
+        m_jxsimages.push_back(copy_xs_image(&image));
 
         for (int ix = 1; ix < paths.size(); ++ix)
         {
@@ -146,14 +169,14 @@ HRESULT DemoApp::DecodeJPEGXSSequence(HWND hWnd)
                 return ret;
             }
 
-            if (!xs_dec_postprocess_image(&xs_config, &image))
+            if (!xs_dec_postprocess_image(&m_xsConfig, &image))
             {
                 fprintf(stderr, "Error postprocessing the image\n");
                 ret = -1;
                 return ret;
             }
 
-            jxsimages.push_back(image);
+            m_jxsimages.push_back(copy_xs_image(&image));
         }
 
         if (input_fn)
@@ -164,7 +187,6 @@ HRESULT DemoApp::DecodeJPEGXSSequence(HWND hWnd)
         {
             free(output_fn);
         }
-        CreateD2DBitmapFromJPEGXSFile(hWnd, &xs_config, &jxsimages[0]);
         xs_free_image(&image);
         if (ctx)
         {
@@ -177,6 +199,10 @@ HRESULT DemoApp::DecodeJPEGXSSequence(HWND hWnd)
         
         SetCursor(LoadCursor(nullptr, IDC_ARROW));
     }
+    
+    m_xsImageIx = 0;
+    CreateD2DBitmapFromJPEGXSFile(hWnd, &m_xsConfig, &m_jxsimages[m_xsImageIx]);
+    
     return hr;
 }
 HRESULT DemoApp::CreateD2DBitmapFromJPEGXSFile(HWND hWnd, xs_config_t* xs_config, xs_image_t* image)
