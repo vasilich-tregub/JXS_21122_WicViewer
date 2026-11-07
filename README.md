@@ -32,3 +32,32 @@ a sequence with a starting frame, like frame_00000000.jxs in sequence 308,
 omitted. For sequence 'sintel' a starting frame is sintel0001.jxc; if you 
 select the sequence starting from sintel0002.jxc to the last frame, you can 
 see how the playback quality is gradually regained.
+
+To compare the decoding performance on bitstreams with and without TDC markers, 
+two sequences were generated:
+
+in the folder 'sintel', with 
+> \> jxs_encoder.exe -c p=tdc -c rate=4 -f 1 -n 90 sintelppm/sintel%04d.ppm sintel/sintel%04d.jxc
+
+in the folder 'sintel-no-tdc', with
+> \> jxs_encoder.exe -c rate=4 -f 1 -n 90 sintelppm/sintel%04d.ppm sintel-no-tdc/sintel%04d.jxc
+
+Based on xs_dec_main.c from the reference codec source, I authored a console application, 
+JXS_SequenceDecoder, which measures and shows decoding times per frame.
+
+JXS_SequenceDecoder can be run like this:
+> \> JXS_SequenceDecoder -f 1 -n 90 sintel/sintel%04d.jxc sintelppm/sintel%04d.ppm<br/>
+Image: 720x306 3-comp@8bpp<br/>
+Sampling: 1x1/1x1/1x1<br/>
+24 24 24 24 24 23 24 23 23 24 25 24 23 23 23 24 23 23 23 24 23 23 23 24 23 24 21 21 22 21 21 21 21 22 21 23 22 24 22 23 22 27 24 25 26 25 23 24 29 23 21 21 21 21 21 21 21 21 22 21 22 21 21 21 21 22 21 21 22 22 23 23 22 23 23 23 22 23 23 23 23 23 23 26 28 26 26 25 24 24
+
+or
+
+> \> JXS_SequenceDecoder -f 1 -n 90 sintel-no-tdc/sintel%04d.jxc sintelppm/sintel%04d.ppm<br/>
+Image: 720x306 3-comp@8bpp<br/>
+Sampling: 1x1/1x1/1x1<br/>
+18 16 16 16 16 16 17 17 16 16 16 16 16 17 16 16 17 17 17 16 17 16 16 16 16 16 16 16 16 16 17 17 16 16 16 17 17 16 16 16 17 16 16 16 16 16 16 16 17 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 18 17 17 16 16 17 16 16 16 16 17 16 16 17 16 17 16 16 17 17
+
+To conform to jxs_decoder's options format, an output sequence is specified 
+but file write operation is muted by 
+> #define DO_NOT_WRITE_JXS_SEQUENCE_OUTPUT_FILES

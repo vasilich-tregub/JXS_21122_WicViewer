@@ -13,6 +13,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		sintel.zip = sintel.zip
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JXS_SequenceDecoder", "JXS_SequenceDecoder\JXS_SequenceDecoder.vcxproj", "{2A0789C5-07F5-456E-AF62-EC572E65AB63}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -29,6 +31,14 @@ Global
 		{007C4F93-4B80-49B5-BAE4-F66466FCAD17}.Release|x64.Build.0 = Release|x64
 		{007C4F93-4B80-49B5-BAE4-F66466FCAD17}.Release|x86.ActiveCfg = Release|Win32
 		{007C4F93-4B80-49B5-BAE4-F66466FCAD17}.Release|x86.Build.0 = Release|Win32
+		{2A0789C5-07F5-456E-AF62-EC572E65AB63}.Debug|x64.ActiveCfg = Debug|x64
+		{2A0789C5-07F5-456E-AF62-EC572E65AB63}.Debug|x64.Build.0 = Debug|x64
+		{2A0789C5-07F5-456E-AF62-EC572E65AB63}.Debug|x86.ActiveCfg = Debug|Win32
+		{2A0789C5-07F5-456E-AF62-EC572E65AB63}.Debug|x86.Build.0 = Debug|Win32
+		{2A0789C5-07F5-456E-AF62-EC572E65AB63}.Release|x64.ActiveCfg = Release|x64
+		{2A0789C5-07F5-456E-AF62-EC572E65AB63}.Release|x64.Build.0 = Release|x64
+		{2A0789C5-07F5-456E-AF62-EC572E65AB63}.Release|x86.ActiveCfg = Release|Win32
+		{2A0789C5-07F5-456E-AF62-EC572E65AB63}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
